@@ -8,7 +8,8 @@ Bundle-Vendor: Worldline.com
 Require-Bundle: org.eclipse.ui,
  org.eclipse.core.runtime,
  org.eclipse.core.resources,
- org.eclipse.jdt.core
+ org.eclipse.jdt.core,
+ com.google.guava
 Bundle-RequiredExecutionEnvironment: JavaSE-1.6
 Bundle-ActivationPolicy: lazy
 Export-Package: net.atos.jdt.ast.validation.engine,

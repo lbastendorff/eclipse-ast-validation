@@ -43,6 +43,9 @@ import org.eclipse.jdt.core.dom.AST;
 import org.eclipse.jdt.core.dom.ASTParser;
 import org.eclipse.jdt.core.dom.CompilationUnit;
 
+import com.google.common.base.Supplier;
+import com.google.common.base.Suppliers;
+
 /**
  * Process that execute validation rules on ICompilationUnits
  * 
@@ -135,6 +138,17 @@ public class ASTValidationEngine {
 		if ((compilationUnit == null) || !compilationUnit.exists()) {
 			return;
 		}
+		
+		// In my experience the AST for the compilation unit only needs parsing once (memoize), not for each ruleDescriptor
+		// This yeild's a big performance gain
+		Supplier<CompilationUnit> parseAST = Suppliers.memoize(() -> {
+			final ASTParser parser = ASTParser.newParser(AST.JLS4);
+			parser.setSource(compilationUnit);
+			parser.setStatementsRecovery(true);
+			parser.setResolveBindings(true);
+			parser.setBindingsRecovery(false);
+			return (CompilationUnit) parser.createAST(new NullProgressMonitor());
+		});
 
 		final List<ASTRulesRepository> repositories = this.dataSource.getRepositories(this.validRepositories);
 		// At first remove the previous markers
@@ -146,13 +160,7 @@ public class ASTValidationEngine {
 			for (final ASTRuleDescriptor ruleDescriptor : ruleRepository.getRules(compilationUnit)) {
 				monitor.subTask(ValidationEngineMessages.VALIDATING_CU.value(compilationUnit.getElementName(),
 						ruleDescriptor.getDescription()));
-				final ASTParser parser = ASTParser.newParser(AST.JLS4);
-				parser.setSource(compilationUnit);
-				parser.setStatementsRecovery(true);
-				parser.setResolveBindings(true);
-				parser.setBindingsRecovery(false);
-				final CompilationUnit domCompilationUnit = (CompilationUnit) parser
-						.createAST(new NullProgressMonitor());
+				final CompilationUnit domCompilationUnit = parseAST.get();
 				try {
 					final AbstractASTRule rule = ruleDescriptor.getRule();
 					rule.setSession(this.session);
