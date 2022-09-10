@@ -26,6 +26,9 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import net.atos.jdt.ast.validation.engine.internal.Activator;
 import net.atos.jdt.ast.validation.engine.internal.ValidationEngineMessages;
@@ -121,8 +124,27 @@ public class ASTValidationEngine {
 	 * @throws CoreException
 	 */
 	public void execute(final IProgressMonitor monitor) throws CoreException {
+		List<Callable<Void>> tasks = new ArrayList<>();
 		for (final ICompilationUnit compilationUnit : this.compilationUnits) {
-			this.execute(compilationUnit, monitor);
+			tasks.add(() -> {
+				this.execute(compilationUnit, monitor);
+				return null;
+			});
+		}
+		
+		int cores = Runtime.getRuntime().availableProcessors();
+		final ExecutorService executor = Executors.newFixedThreadPool(cores);
+		try
+		{
+			executor.invokeAll(tasks);
+		}
+		catch (InterruptedException e)
+		{
+			e.printStackTrace();
+		}
+		finally
+		{
+			executor.shutdown();
 		}
 	}
 
